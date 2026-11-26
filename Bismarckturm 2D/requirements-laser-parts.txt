@@ -1,0 +1,13 @@
+# Python packages for generate_bismarckturm_laser_parts.py / .ps1
+# Install into the virtual environment with:
+#     .\.venv\Scripts\python.exe -m pip install -r .\requirements-laser-parts.txt
+# Minimum versions only (no upper pins), so newer releases are accepted.
+numpy>=1.22
+trimesh>=3.23
+shapely>=2.0
+ezdxf>=1.0
+svgwrite>=1.4
+# only needed for the optional -Preview PNG images:
+matplotlib>=3.5
+# only needed if you use the full-assembly STL (-AssemblyStl): trimesh splits the shells with scipy
+scipy>=1.8

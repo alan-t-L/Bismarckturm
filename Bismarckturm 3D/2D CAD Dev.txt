@@ -1,0 +1,764 @@
+I now have working existing PowerShell and Python scripts that generate scaled 3D Bismarckturm-inspired models optionally as a birdfeeder or tealight as separate STL files:
+
+- 01_base_and_hopper_birdfeeder_*.stl or 01_base_and_hopper_tealight_*.stl
+- 02_hollow_tower_shaft_*.stl
+- 03_lift_off_crown_lid_*.stl
+- 00_full_bismarckturm_assembly_*.stl
+
+The STL files are intended for 3D printing. I now want to create a separate laser-cutting workflow that uses the same Bismarckturm design as a reference and produces flat, interlocking, flat-pack style model components suitable for cutting from sheet material with a laser cutter.
+
+Please create TWO NEW, equivalent scripts:
+
+1. PowerShell script:
+   generate_bismarckturm_laser_parts.ps1
+
+2. Python script:
+   generate_bismarckturm_laser_parts.py
+
+These scripts must take one or more existing Bismarckturm STL section files as input and output 2D SVG and/or DXF files containing flat, interlocking model parts. The output must be suitable for import into a CAD package, where I can inspect, adjust, nest, and prepare it for laser cutting.
+
+Do not modify any of the existing Bismarckturm 3D-printing scripts, their STL outputs, or their behaviour.
+
+======================================================================
+POWERShell AND PYTHON VIRTUAL ENVIRONMENT
+======================================================================
+
+The PowerShell script must call the Python script as its geometry-generation backend.
+
+The PowerShell script must:
+
+1. Locate the Python virtual environment.
+- Default to a virtual environment folder named “.venv” in the same directory as the PowerShell script.
+- Also allow an optional -PythonVenv <path> parameter to specify a different virtual-environment location.
+- On Windows, use the Python executable at:
+  .venv\Scripts\python.exe
+
+2. Validate the virtual environment before running Python.
+- Check that the expected Python executable exists.
+- Check that the virtual environment is usable.
+- Check that all required Python modules are installed.
+- Required modules must include, at minimum:
+  - trimesh
+  - shapely
+  - ezdxf
+  - svgwrite
+  - numpy
+- If matplotlib is used for optional previews, check for it only when -Preview is requested.
+
+3. Check required modules without installing them automatically.
+- Use a safe module-import or package-metadata check.
+- If a required module is missing, print a clear message listing:
+  - the missing module;
+  - the command needed to install it;
+  - the virtual environment being used.
+- Do not install packages automatically unless the user explicitly supplies an installation switch, such as -InstallDependencies.
+
+4. Provide an optional dependency installation switch.
+- Add -InstallDependencies.
+- When supplied, the PowerShell script may use the virtual environment’s pip to install the required packages from a requirements file.
+- Create and use a requirements file named:
+  requirements-laser-parts.txt
+- The file must pin compatible minimum versions where practical, but avoid unnecessarily restrictive version pins.
+- After installation, re-run the module checks before proceeding.
+
+5. Provide clear error handling.
+- If Python is not found, explain how to install Python and create the virtual environment.
+- If the virtual environment is missing, explain how to create it:
+  python -m venv .venv
+- If required modules are missing, explain how to install them:
+  .\.venv\Scripts\python.exe -m pip install -r .\requirements-laser-parts.txt
+- Do not proceed with STL processing or file generation if the environment is incomplete.
+
+6. Ensure that the PowerShell script and Python script produce equivalent results for the same options.
+- The PowerShell script must pass all user options correctly to Python.
+- It must capture and display Python errors clearly.
+- It must return an appropriate non-zero exit code when Python fails.
+- It must not silently mask Python errors or produce partial output files.
+
+======================================================================
+IMPORTANT DESIGN INTENT
+======================================================================
+
+The laser-cut model should be a flat-pack, interlocking sheet-material version of the Bismarckturm, not merely a stack of horizontal cross-sections.
+
+It should preserve the recognisable architectural character of the Bismarckturm model, including:
+- the base and hopper section;
+- the front portal with columns;
+- the door opening;
+- the rear and side window openings;
+- the hollow tower shaft;
+- the lift-off crown lid;
+- the overall vertical proportions;
+- the “BISMARCK” inscription panel, if practical in the chosen material and scale.
+
+The scripts must support both model variants:
+- Birdfeeder
+- Tealight
+
+The Birdfeeder and Tealight versions differ only in the base and hopper section:
+- Birdfeeder: includes the seed-flow guide and enlarged front seed outlet.
+- Tealight: has no seed-flow guide and includes a central tea-light seating area.
+
+The hollow tower shaft and lift-off crown lid are shared between both variants.
+
+======================================================================
+INPUT FILES
+======================================================================
+
+The scripts must accept STL input files through command-line arguments.
+
+At minimum, support the following input pattern:
+
+.\generate_bismarckturm_laser_parts.ps1 `
+  -BaseStl ".\01_base_and_hopper_birdfeeder_scale500mm_open.stl" `
+  -TowerStl ".\02_hollow_tower_shaft_scale500mm_open.stl" `
+  -CrownStl ".\03_lift_off_crown_lid_scale500mm_open.stl" `
+  -Model Birdfeeder `
+  -MaterialThickness 4 `
+  -OutputFormat SVG,DXF `
+  -OutputDirectory ".\laser_parts"
+
+The Python equivalent should use the same logical options, for example:
+
+python generate_bismarckturm_laser_parts.py ^
+  --base-stl ".\01_base_and_hopper_birdfeeder_scale500mm_open.stl" ^
+  --tower-stl ".\02_hollow_tower_shaft_scale500mm_open.stl" ^
+  --crown-stl ".\03_lift_off_crown_lid_scale500mm_open.stl" ^
+  --model birdfeeder ^
+  --material-thickness 4 ^
+  --output-format svg,dxf ^
+  --output-directory ".\laser_parts"
+
+The scripts must also work if the user supplies the full assembly STL instead of separate section STLs, but in that case the scripts should clearly warn that automatic extraction of individual flat panels from an assembled STL may be imperfect. The preferred and more reliable workflow is input from the separate section STLs.
+
+======================================================================
+REQUIRED COMMAND-LINE OPTIONS
+======================================================================
+
+Implement equivalent options in both scripts:
+
+-Birdfeeder
+- Selects the Birdfeeder variant.
+
+-Tealight
+- Selects the Tealight variant.
+
+-Birdfeeder and -Tealight are mutually exclusive. If both are supplied, print a clear error and exit without generating files.
+
+-BaseStl <path>
+- Path to the base and hopper STL.
+
+-TowerStl <path>
+- Path to the hollow tower shaft STL.
+
+-CrownStl <path>
+- Path to the lift-off crown lid STL.
+
+-AssemblyStl <path>
+- Optional path to the full assembly STL, for use when separate section STLs are unavailable.
+
+-MaterialThickness <mm>
+- The measured thickness of the laser-cut sheet material, in millimetres.
+- This must be a positive number.
+- Default: 4 mm.
+
+-Kerf <mm>
+- The measured laser kerf, in millimetres.
+- Default: 0.2 mm.
+- This is the total width of material removed by the laser beam, not half the kerf.
+
+-JointClearance <mm>
+- The desired finished clearance between a tab and its matching slot.
+- Default: 0.2 mm.
+- This is the finished clearance after kerf compensation, not simply the drawn slot dimension.
+
+-TabWidth <mm>
+- Default tab width, in millimetres.
+- Default: 10 mm.
+
+-TabCount <integer>
+- Default number of tabs/slots per major joint edge.
+- Default: 3, subject to available edge length and minimum spacing rules.
+
+-CornerRadius <mm>
+- Optional corner rounding for parts, where appropriate.
+- Default: 0 mm.
+
+-Scale <factor>
+- Optional scale factor applied to the derived 2D geometry.
+- Default: 1.0.
+- This must scale all panel outlines, opening positions, and joint geometry consistently.
+- The 2 mm “BISMARCK” letter relief is a 3D-printing feature and does not need to be reproduced as a 2 mm laser-cut relief. Instead, provide an optional engraving/score outline or omit it if it cannot be represented cleanly.
+
+-OutputFormat <SVG,DXF>
+- Comma-separated output formats.
+- Supported values: SVG, DXF, or both.
+- Default: SVG,DXF.
+
+-OutputDirectory <path>
+- Directory in which to write the generated files.
+- Default: .\2D CAD output
+- Create the directory automatically if it does not exist.
+- If the directory cannot be created or written to, print a clear error and exit without generating files.
+
+python generate_bismarckturm_laser_parts.py ^
+  --base-stl ".\01_base_and_hopper_birdfeeder_scale500mm_open.stl" ^
+  --tower-stl ".\02_hollow_tower_shaft_scale500mm_open.stl" ^
+  --crown-stl ".\03_lift_off_crown_lid_scale500mm_open.stl" ^
+  --model birdfeeder ^
+  --material-thickness 4 ^
+  --output-format svg,dxf
+-Units <mm>
+- Output units.
+- Default: millimetres.
+- All generated SVG and DXF files must use millimetres and be exported at 1:1 scale.
+
+-Preview
+- Optional switch that also generates simple PNG preview images of the nested parts and assembly sequence, if practical.
+
+-Help
+- Displays clear usage information.
+
+======================================================================
+REQUIRED 2D OUTPUT
+======================================================================
+
+For each generated part, create clean, closed 2D vector profiles.
+
+The output must include:
+
+1. Part outline:
+- The outer cutting profile of each flat component.
+
+2. Internal openings:
+- Door, windows, slits, and other openings where applicable.
+- Openings must be represented as closed internal paths, not merely visual markings.
+
+3. Tabs:
+- Male interlocking tabs projecting from panel edges.
+
+4. Slots:
+- Female receiving slots cut into mating panels.
+
+5. Optional assembly/engraving layers:
+- Part identification text.
+- Assembly orientation marks.
+- Optional score lines for folding or alignment.
+- Optional “BISMARCK” engraving outline.
+
+Use separate SVG/DXF layers, colours, or line types to distinguish:
+- Cut lines.
+- Engraving lines.
+- Score lines.
+- Construction/reference lines.
+- Part labels.
+
+The final cut geometry must be usable without manual redrawing. The user should be able to open the SVG or DXF in a CAD package, inspect it, adjust nesting if required, and send it to a laser cutter.
+
+======================================================================
+INTERLOCKING JOINTS
+======================================================================
+
+Create a parametric tab-and-slot joint system.
+
+Requirements:
+
+- Tabs must be designed for the selected material thickness.
+- Slots must be sized to accept the tabs after kerf compensation.
+- The finished joint clearance must equal the user-specified -JointClearance value.
+- Use the supplied -Kerf value in the joint calculation.
+- Do not assume that a tab and slot drawn at identical nominal dimensions will fit correctly.
+- Provide a configurable fit strategy:
+  - “slip”: easy assembly, suitable for glued construction;
+  - “snug”: close locating fit;
+  - “press”: tight interference fit, but warn that laser-cut press fits can be unreliable.
+- Default fit strategy: “slip”.
+
+Use a clear and documented kerf/clearance model. For example, for a tab of nominal width W, total kerf K, and desired finished clearance C:
+- The finished tab width should be W.
+- The finished slot width should be W + C.
+- The drawn slot centre-to-centre distance should account for kerf so that the finished slot is W + C.
+- Document the exact formula used in the script and User Guide.
+
+Avoid fragile joints:
+- Do not create tabs or slots narrower than the material thickness unless the user explicitly permits it.
+- Maintain sensible minimum edge distance between slots and part edges.
+- Avoid placing slots too close together or too close to corners.
+- Add small end reliefs where necessary to prevent stress concentrations and make assembly easier.
+- Ensure that tabs do not collide with windows, the door, the seed outlet, the tea-light cavity, or other internal features.
+
+======================================================================
+PART GENERATION
+======================================================================
+
+Generate separate flat components, not one monolithic cutting sheet.
+
+At minimum, produce separate components for:
+
+Birdfeeder version:
+- Base floor.
+- Front portal assembly.
+- Left side wall.
+- Right side wall.
+- Rear wall.
+- Internal seed-flow guide/support, if it can be represented as a practical flat component.
+- Seed outlet/front tray interface, if applicable.
+- Tower shaft wall panels.
+- Tower shaft internal structural rings or braces, if needed.
+- Crown lid components.
+- Any required corner posts, edge stiffeners, or assembly aids.
+
+Tealight version:
+- Base floor with central tea-light seating area.
+- Front portal assembly.
+- Left side wall.
+- Right side wall.
+- Rear wall.
+- Tower shaft wall panels.
+- Tower shaft internal structural rings or braces, if needed.
+- Crown lid components.
+- Any required corner posts, edge stiffeners, or assembly aids.
+
+Each part must have:
+- A unique, readable filename.
+- A clear part label engraved or marked on the part where space permits.
+- An assembly orientation indicator where necessary.
+- A matching tab/slot layout that ensures correct assembly.
+
+======================================================================
+GEOMETRY DERIVATION
+======================================================================
+
+Use the supplied STL files to derive the principal 2D geometry:
+
+- Extract orthographic projections or cross-sections from the STL geometry.
+- Use the front, rear, left, and right elevations as required.
+- Preserve the relative positions of the door, windows, portal, and other visible features.
+- Preserve the relative height and width of the major model sections.
+- Simplify curved or mesh-derived geometry into practical straight lines, arcs, and polygons where appropriate.
+- Do not attempt to reproduce every STL triangle as a laser-cut edge.
+- Ensure that the resulting 2D parts can be assembled into a coherent 3D form.
+
+For curved tower geometry, offer two approaches:
+1. Faceted approximation, using a configurable number of straight segments.
+2. Layered/stacked construction, where appropriate for rounded sections.
+
+Allow the user to choose the preferred approach with an option such as:
+
+-ConstructionMethod Faceted
+-ConstructionMethod Stacked
+
+Default: Faceted.
+
+If stacked construction is selected, generate material-thickness horizontal layers with alignment features, rather than tab-and-slot panels. Make clear that stacked construction produces a different aesthetic and assembly method.
+
+======================================================================
+NESTING
+======================================================================
+
+Include a simple nesting/layout function:
+
+- Arrange parts within a configurable sheet size.
+- Default sheet size: 600 mm x 400 mm.
+- Add configurable sheet margin.
+- Add configurable part spacing.
+- Avoid overlapping parts.
+- Clearly indicate if parts do not fit on one sheet.
+- If parts do not fit, create additional numbered sheet files, for example:
+  - bismarckturm_birdfeeder_sheet_01.svg
+  - bismarckturm_birdfeeder_sheet_02.svg
+  - bismarckturm_birdfeeder_sheet_01.dxf
+  - bismarckturm_birdfeeder_sheet_02.dxf
+
+Do not rotate text or labels in a way that makes them unreadable.
+Do not place cut lines too close to the sheet edge.
+
+======================================================================
+FILE NAMING
+======================================================================
+
+Use clear, deterministic filenames.
+
+Examples:
+
+bismarckturm_birdfeeder_base_floor.svg
+bismarckturm_birdfeeder_front_portal.svg
+bismarckturm_birdfeeder_left_side_wall.svg
+bismarckturm_birdfeeder_right_side_wall.svg
+bismarckturm_birdfeeder_rear_wall.svg
+bismarckturm_birdfeeder_tower_panel_01.svg
+bismarckturm_birdfeeder_crown_lid.svg
+
+bismarckturm_tealight_base_floor.svg
+bismarckturm_tealight_front_portal.svg
+bismarckturm_tealight_left_side_wall.svg
+bismarckturm_tealight_right_side_wall.svg
+bismarckturm_tealight_rear_wall.svg
+bismarckturm_tealight_tower_panel_01.svg
+bismarckturm_tealight_crown_lid.svg
+
+Also generate:
+
+bismarckturm_<model>_all_parts.svg
+bismarckturm_<model>_all_parts.dxf
+bismarckturm_<model>_sheet_01.svg
+bismarckturm_<model>_sheet_01.dxf
+bismarckturm_<model>_assembly_instructions.md
+bismarckturm_<model>_cut_list.csv
+
+The all-parts file should contain every part, clearly separated and labelled.
+The sheet files should contain nested, non-overlapping parts ready for laser cutting.
+The assembly instructions should explain the order of assembly and identify every tab/slot connection.
+The cut list should list each part, quantity, dimensions, material thickness, and estimated sheet usage.
+
+======================================================================
+VALIDATION REQUIREMENTS
+======================================================================
+
+Separate validation into input-STL validation and generated 2D-output validation.
+
+A. Input STL validation
+
+Before using an input STL, validate that:
+
+- The STL file exists and can be opened.
+- The STL contains a valid triangular mesh.
+- The mesh can be interpreted as a closed, manifold, watertight solid.
+- If the STL is not manifold or watertight, print a clear warning identifying the file and the issue.
+- Do not silently continue if the defect is severe enough to prevent reliable cross-section extraction or 2D part derivation.
+- Check that the STL has a sensible bounding box and units consistent with the Bismarckturm model.
+- Report the STL bounding-box dimensions in millimetres.
+- Confirm that the supplied base STL matches the selected -Birdfeeder or -Tealight model type where identifiable from the filename or geometry.
+- If the user supplies a full assembly STL, warn that automatic extraction of individual flat panels may be imperfect and recommend using the separate section STLs.
+
+B. Generated 2D geometry validation
+
+For every generated 2D part, validate that:
+
+- Every cut path is a closed polyline or closed polygon.
+- Every internal opening is represented as a closed path.
+- No cut path is self-intersecting.
+- No cut path contains duplicate, zero-length, or degenerate segments.
+- No part outline intersects another part outline on the same cutting sheet.
+- No internal opening intersects the part outline.
+- No tab intersects another tab, a slot, an opening, or the part boundary.
+- Every tab has a matching slot on the intended mating part.
+- Every slot has a matching tab on the intended mating part.
+- Tab and slot geometry is compatible in position, orientation, width, depth, and count.
+- The finished tab/slot clearance equals the user-specified -JointClearance value after kerf compensation.
+- Tabs and slots are not narrower than the material thickness unless the user explicitly enables an exception.
+- Slots maintain a sensible minimum distance from part edges and corners.
+- Slots do not fall too close to one another.
+- Slots do not intersect the door, windows, seed outlet, tea-light cavity, internal structural features, or other openings.
+- Part outlines remain within the configured sheet area after nesting.
+- Nested parts maintain a minimum separation from one another and from the sheet edge.
+- The minimum separation accounts for kerf: use at least kerf/2 on each adjacent cut path, plus any configured clearance margin.
+- No part is placed partly outside the sheet.
+- No part overlaps the sheet margin.
+- All output geometry uses millimetres.
+- All SVG and DXF files are exported at 1:1 scale.
+- SVG and DXF outputs contain equivalent geometry and use consistent coordinate systems.
+- Cut, engraving, score, construction, and label information are assigned to clearly separated layers, colours, or line types.
+- Engraving and score paths do not interfere with cut paths.
+- Part labels remain readable and do not overlap cut lines or openings.
+- Any generated test coupon contains clearly labelled candidate tab/slot sizes and can be cut from scrap material.
+
+C. Assembly validation
+
+Before final output, perform a logical assembly check:
+
+- Confirm that every required mating edge has a compatible joint.
+- Confirm that each tab/slot pair is assigned to the correct mating part.
+- Confirm that no two parts claim the same mating edge in a conflicting way.
+- Confirm that the assembled parts form a coherent Bismarckturm form.
+- Confirm that Birdfeeder and Tealight variants use the appropriate base parts.
+- Confirm that the tower shaft and crown lid parts are compatible with both base variants.
+- Produce a warning, rather than failing outright, if automatic STL-to-2D derivation creates an ambiguous or potentially imperfect joint.
+
+D. Failure behaviour
+
+If a validation check fails:
+- Print a clear, specific error message.
+- Identify the affected file, part, layer, joint, or coordinate.
+- Explain the likely cause.
+- Do not write incomplete, invalid, or misleading SVG/DXF output.
+- If a non-critical warning is detected, clearly identify it and allow the user to decide whether to continue only when it does not compromise cut validity or assembly.
+
+======================================================================
+IMPLEMENTATION GUIDANCE
+======================================================================
+
+For the Python script, consider using:
+- trimesh for STL loading, mesh validation, cross-sections, and 2D path export;
+- shapely for 2D polygon operations, offsets, buffering, and Boolean operations;
+- ezdxf for DXF creation;
+- svgwrite or equivalent for SVG creation;
+- matplotlib only for optional preview images.
+
+Use robust 2D Boolean operations and polygon offsetting. Do not rely on naive vertex-by-vertex offsetting.
+
+For the PowerShell script, either:
+- implement equivalent functionality using available .NET/PowerShell libraries; or
+- invoke the Python script as a supported backend, provided that the PowerShell script provides the same command-line interface, validation, output files, and user experience.
+
+If PowerShell invokes Python, state this clearly in the help text and ensure that the Python script is locatable relative to the PowerShell script.
+
+======================================================================
+USER GUIDE
+======================================================================
+
+Create a new User Guide named:
+
+Bismarckturm_Laser_Cutting_User_Guide.md
+
+It must explain:
+
+- The difference between the 3D-printing STL workflow and the laser-cutting 2D workflow.
+- Why STL files cannot normally be sent directly to a laser cutter.
+- How the scripts derive 2D parts from STL reference geometry.
+- How to choose and measure material thickness.
+- How to measure laser kerf.
+- How to use the kerf and joint-clearance options.
+- How to make and use a small test-comb/coupon before cutting the full model.
+- How to choose between Faceted and Stacked construction.
+- How to import SVG or DXF into a CAD package.
+- How to inspect, adjust, and nest the generated parts.
+- How to identify cut, engraving, and score layers.
+- How to assemble the flat-pack model.
+- Differences between the Birdfeeder and Tealight versions.
+- Material recommendations and limitations.
+- Safety guidance, especially for the Tealight version.
+- Troubleshooting for loose joints, tight joints, burnt edges, misaligned parts, and parts that do not fit on a sheet.
+
+======================================================================
+DELIVERABLES
+======================================================================
+
+Please provide:
+
+1. The complete PowerShell script:
+   generate_bismarckturm_laser_parts.ps1
+
+2. The complete Python script:
+   generate_bismarckturm_laser_parts.py
+
+3. The User Guide:
+   Bismarckturm_Laser_Cutting_User_Guide.md
+
+4. A concise explanation of:
+   - the chosen 2D-part derivation method;
+   - the tab-and-slot joint calculation;
+   - kerf and clearance handling;
+   - the differences between the Birdfeeder and Tealight versions;
+   - any limitations of automatic STL-to-2D conversion.
+
+5. Example commands for:
+   - Birdfeeder, 4 mm material, SVG and DXF output;
+   - Tealight, 3 mm material, SVG only;
+   - Birdfeeder, 6 mm material, DXF only;
+   - A test coupon for verifying joint fit.
+
+6. A validation checklist before laser cutting.
+
+Please begin by inspecting the existing STL filenames, dimensions, coordinate system, and part structure. Then design the 2D flat-pack system before writing code. Do not modify the existing 3D-printing scripts or their outputs.
+
+======================================================================
+USER GUIDE
+======================================================================
+
+Create a NEW, separate Markdown User Guide named:
+
+Bismarckturm_Laser_Cutting_2D_Parts_User_Guide.md
+
+IMPORTANT: Do not modify, overwrite, rename, delete, or replace either of the existing User Guides:
+
+- Bismarckturm_Birdfeeder_User_Guide.md
+- Bismarckturm_Model_User_Guide.md
+
+The new guide is solely for the laser-cutting 2D-parts workflow and must be written as a standalone Markdown (.md) document.
+
+The guide must explain what the new scripts are for, how they differ from the existing 3D-printing workflow, and how to use them to produce SVG and DXF files for flat, interlocking laser-cut Bismarckturm model components.
+
+It must include:
+
+1. Overview
+- Purpose of the scripts.
+- Difference between the 3D-printing STL workflow and the laser-cutting 2D workflow.
+- Explanation that the STL files are used as geometric references, not sent directly to the laser cutter.
+- Explanation that the output is editable 2D SVG and/or DXF geometry for CAD review, nesting, and laser cutting.
+- Explanation that the output is not a 3D-printing G-code file.
+
+2. Prerequisites
+- Windows version requirements.
+- PowerShell requirements.
+- Python version requirements.
+- How to create a Python virtual environment.
+- Required Python packages.
+- How the PowerShell script checks the virtual environment and required modules.
+- How to install missing modules using requirements-laser-parts.txt.
+- How to use the optional -InstallDependencies switch.
+- How to specify an alternative virtual environment using -PythonVenv.
+
+3. Input files
+- Explanation of the required STL inputs.
+- Difference between using separate section STLs and the full assembly STL.
+- Recommendation to use the separate section STLs.
+- Explanation of Birdfeeder and Tealight base STL selection.
+- Explanation that the tower shaft and crown lid are shared between both model variants.
+
+4. Command-line options
+- Full explanation of every option:
+  - -Birdfeeder
+  - -Tealight
+  - -BaseStl
+  - -TowerStl
+  - -CrownStl
+  - -AssemblyStl
+  - -MaterialThickness
+  - -Kerf
+  - -JointClearance
+  - -TabWidth
+  - -TabCount
+  - -CornerRadius
+  - -Scale
+  - -OutputFormat
+  - -OutputDirectory
+  - -Units
+  - -ConstructionMethod
+  - -Preview
+  - -PythonVenv
+  - -InstallDependencies
+  - -Help
+- Defaults for every option.
+- Explanation that -Birdfeeder and -Tealight are mutually exclusive.
+- Explanation that the default output directory is:
+  .\2D CAD output
+
+5. Command-line examples
+Provide copy-and-paste examples for both PowerShell and Python, including:
+
+# Birdfeeder, 4 mm material, SVG and DXF output, default output folder
+.\generate_bismarckturm_laser_parts.ps1 `
+  -BaseStl ".\01_base_and_hopper_birdfeeder_scale500mm_open.stl" `
+  -TowerStl ".\02_hollow_tower_shaft_scale500mm_open.stl" `
+  -CrownStl ".\03_lift_off_crown_lid_scale500mm_open.stl" `
+  -Birdfeeder `
+  -MaterialThickness 4 `
+  -OutputFormat SVG,DXF
+
+# Tealight, 3 mm material, SVG only, custom output folder
+.\generate_bismarckturm_laser_parts.ps1 `
+  -BaseStl ".\01_base_and_hopper_tealight_scale300mm_open.stl" `
+  -TowerStl ".\02_hollow_tower_shaft_scale300mm_open.stl" `
+  -CrownStl ".\03_lift_off_crown_lid_scale300mm_open.stl" `
+  -Tealight `
+  -MaterialThickness 3 `
+  -OutputFormat SVG `
+  -OutputDirectory ".\2D CAD output\tealight_3mm"
+
+# Birdfeeder, 6 mm material, DXF only
+.\generate_bismarckturm_laser_parts.ps1 `
+  -BaseStl ".\01_base_and_hopper_birdfeeder_scale500mm_open.stl" `
+  -TowerStl ".\02_hollow_tower_shaft_scale500mm_open.stl" `
+  -CrownStl ".\03_lift_off_crown_lid_scale500mm_open.stl" `
+  -Birdfeeder `
+  -MaterialThickness 6 `
+  -OutputFormat DXF
+
+# Tealight using Python directly
+python generate_bismarckturm_laser_parts.py ^
+  --base-stl ".\01_base_and_hopper_tealight_scale300mm_open.stl" ^
+  --tower-stl ".\02_hollow_tower_shaft_scale300mm_open.stl" ^
+  --crown-stl ".\03_lift_off_crown_lid_scale300mm_open.stl" ^
+  --model tealight ^
+  --material-thickness 3 ^
+  --output-format svg
+
+.\generate_bismarckturm_laser_parts.ps1 `
+  -BaseStl ".\01_base_and_hopper_birdfeeder_scale500mm_open.stl" `
+  -TowerStl ".\02_hollow_tower_shaft_scale500mm_open.stl" `
+  -CrownStl ".\03_lift_off_crown_lid_scale500mm_open.stl" `
+  -Birdfeeder `
+  -MaterialThickness 4 `
+  -OutputFormat SVG,DXF
+
+python generate_bismarckturm_laser_parts.py ^
+  --base-stl ".\01_base_and_hopper_birdfeeder_scale500mm_open.stl" ^
+  --tower-stl ".\02_hollow_tower_shaft_scale500mm_open.stl" ^
+  --crown-stl ".\03_lift_off_crown_lid_scale500mm_open.stl" ^
+  --model birdfeeder ^
+  --material-thickness 4 ^
+  --output-format svg,dxf
+
+# Check or install Python dependencies
+.\generate_bismarckturm_laser_parts.ps1 -InstallDependencies
+
+6. Output files
+- Explanation of individual part SVG/DXF files.
+- Explanation of all-parts files.
+- Explanation of nested sheet files.
+- Explanation of the assembly instructions Markdown file.
+- Explanation of the cut list CSV file.
+- Explanation of preview images, if -Preview is used.
+- File-naming conventions.
+- Explanation that all output is in millimetres at 1:1 scale.
+
+7. CAD and laser-cutter workflow
+- How to open SVG or DXF in a CAD package.
+- How to inspect part outlines, tabs, slots, openings, labels, and layers.
+- How to identify cut, engraving, score, construction, and label layers.
+- How to check dimensions and scale.
+- How to adjust nesting if required.
+- How to export or send the final file to the laser cutter.
+- Explanation that the scripts generate editable 2D geometry, but the user remains responsible for final CAD review and laser settings.
+
+8. Material and joint preparation
+- How to measure material thickness accurately.
+- How to measure laser kerf.
+- How kerf and joint clearance affect tab/slot fit.
+- How to use the test coupon before cutting the full model.
+- Recommended materials and their limitations.
+- Minimum material-thickness and joint-strength considerations.
+
+9. Assembly
+- Assembly sequence.
+- Identification of tabs, slots, and mating parts.
+- Birdfeeder-specific assembly notes.
+- Tealight-specific assembly notes.
+- Gluing, alignment, squareness, and disassembly guidance.
+
+10. Safety
+- Laser-cutter safety.
+- Material compatibility and fume safety.
+- Tealight fire safety.
+- Recommendation to use an LED tea light, or a real tea light in a heat-resistant glass or metal insert.
+- Warning not to place a real flame tea light directly on printed or cut sheet material.
+
+11. Troubleshooting
+- Missing Python modules.
+- Virtual environment not found.
+- STL cannot be read or is not watertight.
+- SVG or DXF does not open correctly.
+- Parts do not fit together.
+- Joints are too loose or too tight.
+- Parts overlap after cutting.
+- Burnt edges or poor cut quality.
+- Parts do not fit on the sheet.
+- Incorrect scale or units.
+
+12. Validation checklist
+- A step-by-step checklist before laser cutting.
+- A checklist for checking the virtual environment.
+- A checklist for checking input STLs.
+- A checklist for checking generated SVG/DXF files.
+- A checklist for checking the test coupon.
+- A checklist for checking the final nested sheets.
+
+Use clear Markdown formatting, meaningful headings, numbered procedures where sequence matters, and fenced code blocks for all command-line examples. Keep the guide practical and avoid unnecessary technical jargon.
+
+Also, do not modify, overwrite, rename, or delete the existing User Guide documents:
+- Bismarckturm_Birdfeeder_User_Guide.md
+- Bismarckturm_Model_User_Guide.md
+
+Create only a new, separate Markdown guide named:
+Bismarckturm_Laser_Cutting_2D_Parts_User_Guide.md

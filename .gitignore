@@ -1,0 +1,22 @@
+﻿# Python / virtual environments
+.venv/
+__pycache__/
+*.pyc
+
+# Generated files
+Bismarckturm 3D/scaled_output/
+Bismarckturm 3D/output/
+Bismarckturm 2D/2D CAD output/
+*.stl
+*.dxf
+*.svg
+
+# Editor / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Intermediate data
+*.npz
+
