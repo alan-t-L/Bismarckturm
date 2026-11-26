@@ -9,7 +9,8 @@ Builds the Bismarckturm as 3D-print-ready STL files from a parametric Python mod
 | `build_bismarckturm_model_scaled.ps1` | PowerShell wrapper: checks Python packages, runs the model script |
 | `bismarckturm_model_v4_scaled.py` | The model (signed-distance field sampled on a grid, polygonised with marching cubes) |
 | `setup_and_run.ps1` | Setup and run helper |
-| User guide | Add the 3D user guide `.md` file to this folder and link it here |
+| `build_model_sets.ps1` | Builds a defined set of Birdfeeder and Tealight models at several scales and moves each model's four STLs into its own folder under `model_sets` |
+| [`Bismarckturm_3D_Model_Generator_Scripts_User_Guide.md`](Bismarckturm_3D_Model_Generator_Scripts_User_Guide.md) | User guide |
 
 ## Quick start
 
