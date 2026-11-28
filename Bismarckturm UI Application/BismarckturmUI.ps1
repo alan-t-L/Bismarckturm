@@ -346,7 +346,7 @@ function Set-StatusText {
 $form = New-Object System.Windows.Forms.Form
 $form.Text = 'Bismarckturm - model generator'
 $form.StartPosition = 'CenterScreen'
-$form.ClientSize = New-Object System.Drawing.Size(940, 780)
+$form.ClientSize = New-Object System.Drawing.Size(885, 650)
 $form.MinimumSize = New-Object System.Drawing.Size(800, 620)
 
 $tabs = New-Object System.Windows.Forms.TabControl
@@ -396,7 +396,7 @@ $c3.P3   = New-Check '3  Lift-off crown lid' $true
 $c3.PAsm = New-Check 'asm  Full assembly (viewing only)' $true
 Add-Row $t3 'Parts to generate' (New-FlowRow @($c3.P1, $c3.P2, $c3.P3, $c3.PAsm))
 
-Add-Row $t3 '' (New-Note 'Output goes to "Bismarckturm 3D\scaled_output". A build takes a few minutes, needs a few GB of free memory and writes STL files of roughly 60-125 MB each (the assembly about 300 MB). The laser-parts workflow needs parts 1, 2 and 3 at the same scale.')
+Add-Row $t3 '' (New-Note ('3D model output (STL files) are output to folder "...\Bismarckturm 3D\scaled_output".' + "`r`n" + 'A build could take a few minutes, needs a few GB of free memory and writes STL files' + "`r`n" + 'of roughly 60-125 MB each (the assembly about 300 MB).' + "`r`n" + 'If you intend to use the STL files as source files for making 2D laser-cutter parts,' + "`r`n" + 'select parts 1, 2 and 3, and ensure that the same model scale is selected for generation' + "`r`n" + 'on the "2D laser-cutter parts (SVG / DXF)" tab.'))
 
 function Update-3D {
     if (-not $script:Ready) { return }
@@ -663,13 +663,13 @@ function Update-2D {
         if ($formats.Count -eq 0) { $errs.Add('Select at least one output format (SVG or DXF).') }
         else { $argList.Add('-OutputFormat ' + ($formats -join ',')) }
 
-        Add-OptionalNumber $c2.TabWidth 'Tab width' 10 '-TabWidth' $argList $errs $false $true
-        Add-OptionalNumber $c2.TabCount 'Tabs per edge' 3 '-TabCount' $argList $errs $true $true
-        Add-OptionalNumber $c2.Corner 'Corner radius' 0 '-CornerRadius' $argList $errs $false $false
-        Add-OptionalNumber $c2.SheetW 'Sheet width' 600 '-SheetWidth' $argList $errs $false $true
-        Add-OptionalNumber $c2.SheetH 'Sheet height' 400 '-SheetHeight' $argList $errs $false $true
-        Add-OptionalNumber $c2.Margin 'Sheet margin' 10 '-SheetMargin' $argList $errs $false $false
-        Add-OptionalNumber $c2.Spacing 'Part spacing' 3 '-PartSpacing' $argList $errs $false $false
+        Add-OptionalNumber $c2.TabWidth.Text 'Tab width' 10 '-TabWidth' $argList $errs $false $true
+        Add-OptionalNumber $c2.TabCount.Text 'Tabs per edge' 3 '-TabCount' $argList $errs $true $true
+        Add-OptionalNumber $c2.Corner.Text 'Corner radius' 0 '-CornerRadius' $argList $errs $false $false
+        Add-OptionalNumber $c2.SheetW.Text 'Sheet width' 600 '-SheetWidth' $argList $errs $false $true
+        Add-OptionalNumber $c2.SheetH.Text 'Sheet height' 400 '-SheetHeight' $argList $errs $false $true
+        Add-OptionalNumber $c2.Margin.Text 'Sheet margin' 10 '-SheetMargin' $argList $errs $false $false
+        Add-OptionalNumber $c2.Spacing.Text 'Part spacing' 3 '-PartSpacing' $argList $errs $false $false
 
         if ($c2.Preview.Checked) { $argList.Add('-Preview') }
         if ($c2.Narrow.Checked)  { $argList.Add('-AllowNarrowTabs') }
@@ -843,3 +843,6 @@ catch {
         "The Bismarckturm UI stopped with an error:`r`n`r`n$($_.Exception.Message)`r`n`r`n$($_.ScriptStackTrace)",
         'Bismarckturm', 'OK', 'Error') | Out-Null
 }
+
+
+
